@@ -1,0 +1,203 @@
+---
+title: "Vine Copula"
+author: "Yan Lovepeace"
+date: "2026-06-08"
+categories: [news]
+---
+
+# 第 X 章 基于 Vine Copula 的 SST-SF-QCR 湍流模型贝叶斯不确定性量化方法
+
+## X.1 总体框架
+
+本章提出一种基于 Vine Copula 的贝叶斯不确定性量化（UQ）框架，用于湍流模型参数的反演与校准。设湍流模型待推断参数集合为 $\boldsymbol{\theta}=\{\theta_1,\theta_2,\dots,\theta_n\}$，观测量（Quantity of Interest, QoI）为 $D$。贝叶斯公式为
+
+$$
+p(\boldsymbol{\theta}\mid D)\propto p(D\mid \boldsymbol{\theta})\,p(\boldsymbol{\theta}),
+\tag{X.1}
+$$
+
+其中 $p(\boldsymbol{\theta})$ 为先验分布，$p(D\mid\boldsymbol{\theta})$ 为似然函数，$p(\boldsymbol{\theta}\mid D)$ 为后验分布。由于缺乏关于参数分布的先验知识，本文采用均匀分布作为先验。后验分布通过马尔可夫链蒙特卡洛（MCMC）方法采样获得；为降低每次似然评估所需的高昂 CFD 计算成本，采用非侵入式多项式混沌（NIPC）代理模型替代 CFD 求解器（见第 X.3 节）。
+
+本文观测数据 $D$ 为三个站位（记为 $x_{0000}$、$x_{0010}$、$x_{0020}$）上的雷诺应力 $\langle u'v'\rangle$ 剖面，参考真值取自 DNS 数据。每个站位选取 $M$ 个观测点，则观测量可组织为 $D=\{D_{jk}\}$，$j=1,\dots,M$ 为测点编号，$k=1,2,3$ 为站位编号。
+
+框架的整体流程如图 X.1 所示，包含四个环节：(1) 基于 CFD 先验样本包络的观测点筛选（第 X.4 节）；(2) 基于先验样本的 Vine Copula 离线拟合（第 X.2 节）；(3) NIPC 代理模型构建（第 X.3 节）；(4) 将拟合的 copula 密度严格嵌入似然函数的 MCMC 贝叶斯推断（第 X.2.4 节）。
+
+## X.2 基于 Vine Copula 的似然函数构造
+
+### X.2.1 朴素贝叶斯独立假设的局限性
+
+传统贝叶斯校准基于朴素贝叶斯假设，将不同站位、不同测点的观测量视为相互独立的随机变量，即
+
+$$
+p(D\mid\boldsymbol{\theta})=\prod_{j=1}^{M}\prod_{k=1}^{3}p(D_{jk}\mid\boldsymbol{\theta}).
+\tag{X.2}
+$$
+
+然而，雷诺应力在相邻站位之间存在显著的空间相关性：湍流模型参数扰动引起的预测误差在不同站位间并非独立，而是呈现复杂的相依结构。忽略该相关性会使似然函数高估数据信息量，导致后验分布过度集中于不合理的参数区域，降低推断的可靠性。
+
+需要指出的是，Li 等[xx]虽然引入了 copula 刻画两个物理量之间的相关性，但其 copula 仅以权重函数的形式乘在朴素似然之上，并未从联合概率密度分解的意义上构造似然函数。本文则从 Sklar 定理出发，用 copula 严格替换联合似然函数。
+
+### X.2.2 Sklar 定理与 copula
+
+Copula 理论的核心是 Sklar 定理[xx]：设 $H$ 为 $d$ 维联合分布函数，其边缘分布为 $F_1,\dots,F_d$，则存在 copula 函数 $C(\cdot)$，使得对任意 $(x_1,\dots,x_d)\in\mathbb{R}^d$，
+
+$$
+H(x_1,\dots,x_d)=C\big(F_1(x_1),\dots,F_d(x_d)\big).
+\tag{X.3}
+$$
+
+若各边缘分布连续，则 $C$ 唯一。对式 (X.3) 两端求导，联合概率密度函数可分解为
+
+$$
+f(x_1,\dots,x_d)=c\big(F_1(x_1),\dots,F_d(x_d)\big)\prod_{k=1}^{d}f_k(x_k),
+\tag{X.4}
+$$
+
+其中 $f_k$ 为边缘概率密度，$c=\partial^d C/\partial u_1\cdots\partial u_d$ 为 copula 密度。式 (X.4) 表明：任意联合分布可分离为"边缘行为"与"相依结构"两个独立部分，copula 密度 $c$ 恰好度量了去除边缘影响后的纯相关结构。
+
+### X.2.3 Vine copula 理论
+
+当维度 $d\ge 3$ 时，单个阿基米德 copula 或椭圆 copula 难以同时刻画多对变量间非对称、非线性的相依模式。Bedford 与 Cooke[xx] 提出的 regular vine（R-vine）将 $d$ 维 copula 密度分解为 $d(d-1)/2$ 个**二元 pair-copula** 的乘积，组织为 $d-1$ 棵嵌套树 $T_1,\dots,T_{d-1}$：
+
+$$
+c(u_1,\dots,u_d)=\prod_{t=1}^{d-1}\prod_{e\in E_t}c_{e}\big(u_{a_e|\mathcal{D}_e},\,u_{b_e|\mathcal{D}_e}\big),
+\tag{X.5}
+$$
+
+其中 $E_t$ 为第 $t$ 棵树的边集合，$a_e,b_e$ 为边 $e$ 连接的两个变量，$\mathcal{D}_e$ 为条件变量集，$u_{a_e|\mathcal{D}_e}=F(u_{a_e}\mid u_{\mathcal{D}_e})$ 为条件分布函数（由前一层树的 h-函数递推计算）。每个 pair-copula 的族（Gaussian、t、Clayton、Gumbel、Frank、Joe、BB1、BB6、BB7、BB8、Tawn 等）与参数可独立选择，因而 R-vine 能够灵活表达**尾部相关、非对称相关**等复杂相依模式，这是单一 copula 无法做到的。
+
+本文中 $d=3$，对应三个站位。此时 R-vine 结构由 2 棵树组成：第 1 棵树包含 2 个无条件 pair-copula，第 2 棵树包含 1 个条件 pair-copula，共 3 条边。
+
+### X.2.4 严格似然函数推导
+
+对每个测点 $j$，将三个站位观测误差（模型预测与 DNS 真值之差所对应的随机量）的联合分布用 Sklar 定理分解。记 $F_{jk}(\cdot\mid\boldsymbol{\theta})$、$f_{jk}(\cdot\mid\boldsymbol{\theta})$ 分别为当前参数 $\boldsymbol{\theta}$ 下测点 $j$、站位 $k$ 处模型预测分布的累积分布函数与概率密度，$c_j$ 为测点 $j$ 处拟合的三维 vine copula 密度，则该测点处观测 $D_j=(D_{j1},D_{j2},D_{j3})$ 的联合似然为
+
+$$
+p(D_j\mid\boldsymbol{\theta})=c_j\big(u_{j1},u_{j2},u_{j3}\big)\prod_{k=1}^{3}f_{jk}(D_{jk}\mid\boldsymbol{\theta}),
+\qquad u_{jk}=F_{jk}(D_{jk}\mid\boldsymbol{\theta}).
+\tag{X.6}
+$$
+
+假设不同测点之间相互独立，全数据的对数似然函数为
+
+$$
+\log p(D\mid\boldsymbol{\theta})=\sum_{j=1}^{M}\left[\sum_{k=1}^{3}\log f_{jk}(D_{jk}\mid\boldsymbol{\theta})+\log c_j\big(u_{j1},u_{j2},u_{j3}\big)\right].
+\tag{X.7}
+$$
+
+式 (X.7) 即本文用于 MCMC 推断的严格似然函数。与式 (X.2) 相比，其差异仅在于每个测点增加了 $\log c_j$ 一项：当三个站位相互独立时 $c_j\equiv 1$，式 (X.7) 退化为朴素贝叶斯似然；当站位间存在相关性时，$\log c_j$ 对似然进行修正，使推断自动利用（而非忽略）站位间的相依信息。
+
+### X.2.5 边缘分布的核估计与数据噪声处理
+
+式 (X.7) 中的边缘密度 $f_{jk}$ 与边缘分布 $F_{jk}$ 依赖于当前链状态 $\boldsymbol{\theta}$，无法解析给出，本文采用蒙特卡洛-核密度估计（KDE）：在当前 $\boldsymbol{\theta}$ 下，用 NIPC 代理模型抽取 $N_s$ 个前向预测样本 $\{\hat{y}^{(s)}_{jk}\}_{s=1}^{N_s}$，则
+
+$$
+\hat{f}_{jk}(D_{jk}\mid\boldsymbol{\theta})=\frac{1}{N_s}\sum_{s=1}^{N_s}\frac{1}{\tilde{h}}\,\mathcal{K}\!\left(\frac{D_{jk}-\hat{y}^{(s)}_{jk}}{\tilde{h}}\right),
+\tag{X.8}
+$$
+
+$\hat{F}_{jk}$ 由核函数的累积形式类似给出。式中 $\mathcal{K}$ 为标准高斯核，带宽 $\tilde{h}$ 的构造考虑了观测数据噪声：设数据噪声 $\varepsilon\sim\mathcal{N}(0,\sigma^2)$ 与前向预测相互独立，则卷积后等效带宽为
+
+$$
+\tilde{h}=\sqrt{h^2+\sigma^2},
+\tag{X.9}
+$$
+
+其中 $h$ 按 Silverman 经验法则由前向样本自适应估计。该处理将数据噪声确定性地并入核估计，避免了在似然内部引入额外的随机抽样，保证了 MCMC 链的平稳性。本文取 $N_s=2000$（收敛性验证后增至 5000）。噪声标准差 $\sigma$ 不作为固定值给定，而是作为附加维度与模型参数一同由后验推断。
+
+### X.2.6 Vine copula 的离线拟合与推断中的固定使用
+
+一个重要的问题是 copula $c_j$ 是否依赖于参数 $\boldsymbol{\theta}$。本文采取"**先验拟合、推断固定**"的策略：在推断之前，利用 $N_t$ 组 CFD 先验样本（覆盖参数先验全域），对每个测点 $j$ 将三个站位的预测值变换到 copula 空间（经验累积分布变换），采用 rvinecopulib 库[xx] 自动完成 R-vine 结构选择、pair-copula 族选择（基于 AIC/BIC 准则）与参数估计，得到固定的 $c_j$；在随后的 MCMC 过程中 $c_j$ 保持不变，仅 $u_{jk}=F_{jk}(D_{jk}\mid\boldsymbol{\theta})$ 随链状态更新。
+
+该策略的合理性在于：copula 描述的是模型误差在站位间的**结构性**相依模式，对参数在合理先验范围内的扰动不敏感；而固定 $c_j$ 避免了在 MCMC 每一步重估 copula 的巨额开销，使推断在计算上可行。拟合结果显示，各测点最优 pair-copula 族以 Tawn、BB7、Joe、BB8 等非对称尾部相关族为主，而非 Gaussian copula——这从数据层面证实了采用 vine copula 而非单一高斯 copula 刻画站位相关性的必要性。
+
+## X.3 NIPC 代理模型方法
+
+贝叶斯推断需要数万次前向模型评估，直接调用 CFD 不可行，本文采用非侵入式多项式混沌（NIPC）方法[xx] 构建代理模型。将 QoI 表示为确定性分量与标准随机基函数的组合：
+
+$$
+D(\mathbf{X},\boldsymbol{\xi})\approx\sum_{j=0}^{P}D_j(\mathbf{X})\,\Psi_j(\boldsymbol{\xi}),
+\tag{X.10}
+$$
+
+其中 $\boldsymbol{\xi}=\{\xi_1,\dots,\xi_n\}$ 为 $n$ 维标准随机变量（本文取 Legendre-Uniform 型，与均匀先验一致），$\Psi_j$ 为多维 Legendre 多项式基。采用全阶（total-order）截断，阶数为 $p$ 时基函数个数为
+
+$$
+P+1=\frac{(n+p)!}{n!\,p!}.
+\tag{X.11}
+$$
+
+由于先验为均匀分布，物理参数与标准随机变量之间为线性映射 $\xi_i=2(\theta_i-a_i)/(b_i-a_i)-1$，$[a_i,b_i]$ 为第 $i$ 个参数的先验区间。
+
+展开系数 $D_j$ 由最小二乘回归从确定性样本计算获得。Hosder 等[xx] 引入过采样比 $n_p$，建议样本数取
+
+$$
+K=\frac{(n+p)!}{n!\,p!}\times n_p,
+\tag{X.12}
+$$
+
+且 $n_p=2$ 时能更好地逼近各阶多项式统计特性。本文参数维数 $n=9$、阶数 $p=2$，基函数共 55 项，取 $n_p=2$，故确定性 CFD 样本数为 $K=110$。采样方法采用拉丁超立方抽样（LHS），相比随机抽样其统计量收敛过程更为平滑[xx]。
+
+对每个（测点，站位）响应分别构建 PC 展开，共 $3M$ 个代理模型。随机解的均值与方差可由系数直接解析获得：
+
+$$
+\mu_D=D_0(\mathbf{X}),\qquad
+\sigma_D^2=\sum_{j=1}^{P}\Big[D_j^2(\mathbf{X})\big\langle\Psi_j^2(\boldsymbol{\xi})\big\rangle\Big].
+\tag{X.13}
+$$
+
+基于式 (X.13) 的方差分解可进一步计算 Sobol 敏感性指数，用于评估各参数对输出不确定性的相对贡献[xx]。
+
+## X.4 基于先验包络的观测点筛选
+
+推断所用 DNS 观测点需满足一个基本要求：其真值应落在 CFD 先验预测的可及范围内，否则对应的似然贡献恒接近于零，不仅浪费观测信息，还会扭曲后验。为此，本文在推断前执行先验范围检验：将 110 组先验 CFD 样本在各站位、各测点处的预测包络（最小值-最大值范围，或高分位数区间）与 DNS 真值逐点对比，剔除**任一站位**上真值落在包络之外的测点。即仅当测点 $j$ 在三个站位上均位于先验包络内时才予以保留，以保证该测点的三维 copula 似然是良定义的。经检验，原始 57 个测点中保留 20 个进入推断（见第 X+1 章）。
+
+## X.5 湍流模型与待推断参数
+
+本文基准湍流模型为 Menter 的 $k$-$\omega$ SST 模型[xx]，其输运方程为
+
+$$
+\frac{\mathrm{D}(\rho k)}{\mathrm{D}t}=P-\beta^*\rho\omega k+\frac{\partial}{\partial x_j}\left[(\mu+\sigma_k\mu_t)\frac{\partial k}{\partial x_j}\right],
+$$
+
+$$
+\frac{\mathrm{D}(\rho\omega)}{\mathrm{D}t}=\frac{\gamma}{\nu_t}P-\beta\rho\omega^2+\frac{\partial}{\partial x_j}\left[(\mu+\sigma_\omega\mu_t)\frac{\partial\omega}{\partial x_j}\right]+2(1-F_1)\frac{\rho\sigma_{\omega 2}}{\omega}\frac{\partial k}{\partial x_j}\frac{\partial\omega}{\partial x_j},
+\tag{X.14}
+$$
+
+涡黏系数定义为
+
+$$
+\mu_t=\frac{\rho a_1 k}{\max(a_1\omega,\,\Omega F_2)}.
+\tag{X.15}
+$$
+
+在 SST 模型基础上，本文采用 SF-QCR 修正（【此处插入 SF/QCR 修正项的控制方程与符号说明，包括 $C_{sf1}$、$C_{sf2}$、$C_{sf3}$、$C_{fd}$、$C_{Cr1}$、$C_{Cr2}$ 出现的具体项】）。
+
+综合基准模型与修正项，本文选取 9 个闭合系数作为待推断参数 $\boldsymbol{\theta}$，其标称值与先验范围如表 X.1 所示。
+
+**表 X.1 模型参数标称值与先验范围**
+
+| 参数 | $\kappa$ | $\beta^*$ | $a_1$ | $C_{sf1}$ | $C_{sf2}$ | $C_{sf3}$ | $C_{fd}$ | $C_{Cr1}$ | $C_{Cr2}$ |
+|---|---|---|---|---|---|---|---|---|---|
+| 标称值 | 0.41 | 0.09 | 0.31 | 12 | 4 | 5 | 8 | 0.3 | 2.5 |
+| 下限 | 0.328 | 0.0675 | 0.2325 | 10 | 3.6 | 4.6 | 6.5 | 0.225 | 2.0 |
+| 上限 | 0.492 | 0.1125 | 0.3875 | 14 | 4.4 | 5.4 | 9.5 | 0.375 | 3.0 |
+
+各参数先验取表列区间内的均匀分布，并线性映射至 $[-1,1]$ 标准空间进行采样与推断。
+
+## X.6 数值实现
+
+本文方法基于开源库实现：vine copula 的离线拟合采用 R 语言 rvinecopulib 包[xx]；贝叶斯推断基于 UQTk（UQ Toolkit）[xx] 的 MCMC 框架（DRAM 自适应算法[xx]）二次开发，将 X.2.4 节导出的 copula 似然函数作为新的似然类型集成，其中 vine copula 密度的在线评估通过 C++ 库 vinecopulib[xx] 实现，R 端拟合结果（结构矩阵与 pair-copula 参数）以文本文件形式传递并在推断程序中精确重建。代理模型的构建与后处理基于 UQTk 的 NIPC 工具链完成。
+
+---
+
+### 占位与待补充清单（提交前请逐项处理）
+
+1. **图 X.1**：方法总体流程图（先验采样 → 先验检验 → copula 拟合 → 代理构建 → MCMC 推断 → 后验分析）；
+2. **X.5 节 SF/QCR 修正项的控制方程**：本文档仅给出了 SST 基准方程；
+3. **算例描述**（几何、来流条件、网格、DNS 数据来源）：建议单设"问题描述"一章，参考 Li 等[xx] 的第 3 章结构；
+4. 所有 `[xx]` 引用编号：Sklar 定理、Bedford & Cooke (R-vine)、Hosder (过采样)、rvinecopulib、vinecopulib、UQTk、DRAM (Haario et al.)、Menter (SST)、Li 等 (copula 贝叶斯框架对比)；
+5. X.2.6 节"拟合结果以 Tawn/BB7/Joe 为主"一句：建议配一张各测点 pair-copula 族分布的统计图作为支撑（可用 `copula_dat/fits/` 直接统计生成）；
+6. $M=20$、站位数 $d=3$、$N_s$、$K=110$ 等数值：若后续试验调整请同步修改。
+
