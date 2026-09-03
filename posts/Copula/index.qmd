@@ -9,7 +9,7 @@ categories: [news]
 
 ## X.1 总体框架
 
-本章提出一种基于 Vine Copula 的贝叶斯不确定性量化（UQ）框架，用于湍流模型参数的反演与校准。设湍流模型待推断参数集合为 $\boldsymbol{\theta}=\{\theta_1,\theta_2,\dots,\theta_n\}$，观测量（Quantity of Interest, QoI）为 $D$。贝叶斯公式为
+本章提出一种基于 Vine Copula 的贝叶斯不确定性量化（UQ）框架，用于湍流模型参数的反演与校准。设湍流模型待推断参数集合为 $\boldsymbol{\theta}=\{\theta_1,\theta_2,\dots,\theta_n\}$，观测量（Quantity of Interest, QoI）为 $D$。贝叶斯公式为1
 
 $$
 p(\boldsymbol{\theta}\mid D)\propto p(D\mid \boldsymbol{\theta})\,p(\boldsymbol{\theta}),
