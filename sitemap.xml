@@ -1,23 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://hanyan10086.github.io/my-blog/posts/welcome/index.html</loc>
-    <lastmod>2026-05-27T09:52:50.143Z</lastmod>
+    <loc>https://hanyan10086.github.io/my-blog/posts/论文框架与选刊建议.html</loc>
+    <lastmod>2026-09-03T11:23:31.711Z</lastmod>
   </url>
   <url>
-    <loc>https://hanyan10086.github.io/my-blog/posts/jiajiao/index.html</loc>
-    <lastmod>2026-05-29T10:20:06.079Z</lastmod>
+    <loc>https://hanyan10086.github.io/my-blog/posts/post-with-code/index.html</loc>
+    <lastmod>2026-05-27T09:52:50.147Z</lastmod>
   </url>
   <url>
-    <loc>https://hanyan10086.github.io/my-blog/about.html</loc>
-    <lastmod>2026-05-27T09:52:50.150Z</lastmod>
+    <loc>https://hanyan10086.github.io/my-blog/posts/IELTS Learning/index.html</loc>
+    <lastmod>2026-09-03T11:31:43.548Z</lastmod>
   </url>
   <url>
     <loc>https://hanyan10086.github.io/my-blog/index.html</loc>
     <lastmod>2026-05-27T09:52:50.141Z</lastmod>
   </url>
   <url>
-    <loc>https://hanyan10086.github.io/my-blog/posts/post-with-code/index.html</loc>
-    <lastmod>2026-05-27T09:52:50.147Z</lastmod>
+    <loc>https://hanyan10086.github.io/my-blog/about.html</loc>
+    <lastmod>2026-05-27T09:52:50.150Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hanyan10086.github.io/my-blog/posts/Copula/index.html</loc>
+    <lastmod>2026-09-03T10:57:58.942Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hanyan10086.github.io/my-blog/posts/jiajiao/index.html</loc>
+    <lastmod>2026-05-29T10:20:06.079Z</lastmod>
+  </url>
+  <url>
+    <loc>https://hanyan10086.github.io/my-blog/posts/welcome/index.html</loc>
+    <lastmod>2026-05-27T09:52:50.143Z</lastmod>
   </url>
 </urlset>
